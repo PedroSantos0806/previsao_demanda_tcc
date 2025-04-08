@@ -7,7 +7,7 @@ import os
 
 MYSQL_USER = 'root'
 MYSQL_PASSWORD = 'root'
-MYSQL_HOST = 'localhost'
+MYSQL_HOST = '191.36.128.250'
 MYSQL_PORT = '3306'
 MYSQL_DB = 'previsao_demanda'
 
