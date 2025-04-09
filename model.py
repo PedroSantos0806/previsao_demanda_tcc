@@ -4,10 +4,11 @@ from sklearn.linear_model import LinearRegression
 
 
 usuario = 'root'
-senha = 'root'
-host = 'localhost'
-banco = 'previsao_vendas'
-database_url = f'mysql+mysqlconnector://{usuario}:{senha}@{host}/{banco}'
+senha = 'cVUGBLbWwCeJcvbXtsKEUodzlThjcauU'
+host = 'switchyard.proxy.rlwy.net'
+porta = '39084'
+banco = 'railway'
+database_url = f'mysql+mysqlconnector://{usuario}:{senha}@{host}:{porta}/{banco}'
 
 def carregar_dados():
     engine = create_engine(database_url)
