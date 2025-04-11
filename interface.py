@@ -44,7 +44,6 @@ if "usuario_id" not in st.session_state:
                 st.rerun()
             else:
                 st.error("Email ou senha inválidos.")
-
     else:
         st.title("Cadastrar Novo Usuário")
         nome = st.text_input("Nome Completo")
@@ -98,22 +97,22 @@ else:
     st.markdown("Use o modelo de regressão linear para prever as vendas dos próximos dias.")
     dias = st.slider("Número de dias para previsão", min_value=1, max_value=30, value=7)
 
+    df = carregar_dados(usuario_id=st.session_state.usuario_id)
+
     if st.button("Prever Demanda"):
-        df = carregar_dados(usuario_id=st.session_state.usuario_id)
         if df.empty:
             st.warning("Nenhum dado encontrado para previsão.")
         else:
-            df['data'] = pd.to_datetime(df['data'])  # Conversão segura
+            df['data'] = pd.to_datetime(df['data'])
             modelo, ultimo_dia = treinar_modelo(df)
             previsoes = prever_demanda(modelo, ultimo_dia, dias)
+            st.subheader("Previsões de Demanda")
+            st.dataframe(previsoes)
 
             # Estatísticas
             media_diaria = df.groupby(df['data'].dt.date)['quantidade'].sum().mean()
             max_vendas = df['quantidade'].max()
             min_vendas = df['quantidade'].min()
-
-            st.subheader("📅 Previsões de Demanda")
-            st.dataframe(previsoes)
 
             st.markdown("### 📊 Estatísticas de Vendas")
             col1, col2, col3 = st.columns(3)
@@ -123,7 +122,6 @@ else:
 
     # Histórico de vendas
     st.markdown("## 🧾 Histórico de Vendas")
-    df = carregar_dados(usuario_id=st.session_state.usuario_id)
     if not df.empty:
         st.dataframe(df.sort_values(by="data"))
     else:

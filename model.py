@@ -1,51 +1,57 @@
 import pandas as pd
-import numpy as np
-from sqlalchemy import create_engine
 from sklearn.linear_model import LinearRegression
+from database import session, Venda
 
-usuario = 'root'
-senha = 'cVUGBLbWwCeJcvbXtsKEUodzlThjcauU'
-host = 'switchyard.proxy.rlwy.net'
-porta = '39084'
-banco = 'railway'
-database_url = f'mysql+mysqlconnector://{usuario}:{senha}@{host}:{porta}/{banco}'
+def carregar_dados(usuario_id):
+    """
+    Carrega os dados de vendas do banco para um DataFrame.
+    """
+    vendas = session.query(Venda).filter_by(usuario_id=usuario_id).all()
+    dados = [{
+        "data": venda.data,
+        "quantidade": venda.quantidade,
+        "produto": venda.produto,
+        "valor": venda.valor
+    } for venda in vendas]
 
-def carregar_dados(usuario_id=None):
-    engine = create_engine(database_url)
-    if usuario_id is not None:
-        query = f'SELECT * FROM vendas WHERE usuario_id = {usuario_id}'
-    else:
-        query = 'SELECT * FROM vendas'
-    df = pd.read_sql(query, con=engine)
-    return df
+    return pd.DataFrame(dados)
 
 def preparar_dados(df):
+    """
+    Agrupa os dados por data e soma as quantidades.
+    Transforma as datas em dias desde o início para usar como feature.
+    """
     df['data'] = pd.to_datetime(df['data'])
-    df = df.sort_values('data')
-    df['dias'] = (df['data'] - df['data'].min()).dt.days
+    df = df.groupby(df['data'].dt.date)['quantidade'].sum().reset_index()
+    df.columns = ['data', 'quantidade']
+
+    df['dias'] = (pd.to_datetime(df['data']) - pd.to_datetime(df['data'].min())).dt.days
     return df
 
 def treinar_modelo(df):
+    """
+    Treina o modelo de regressão linear com base na quantidade vendida por dia.
+    Retorna o modelo treinado e o último dia como referência para previsão.
+    """
     df = preparar_dados(df)
-    x = df[['dias']]
+    X = df[['dias']]
     y = df['quantidade']
+    
     modelo = LinearRegression()
-    modelo.fit(x, y)
-    return modelo, df['dias'].max()
+    modelo.fit(X, y)
 
-def prever_demanda(modelo, ultimo_dia, dias_previsao=7):
-    novos_dias = pd.DataFrame({'dias': list(range(ultimo_dia+1, ultimo_dia+1+dias_previsao))})
-    previsao = modelo.predict(novos_dias)
-    previsao = np.clip(previsao, 0, None)  
-    novos_dias['previsao'] = previsao
-    return novos_dias
+    ultimo_dia = df['dias'].max()
+    return modelo, ultimo_dia
 
-if __name__ == "__main__":
-    df = carregar_dados()
-    if df.empty:
-        print("Nenhum dado encontrado na tabela 'vendas'.")
-    else:
-        modelo, ultimo_dia = treinar_modelo(df)
-        previsao = prever_demanda(modelo, ultimo_dia, 7)
-        print("Previsão de vendas para os próximos dias:")
-        print(previsao[['dias', 'previsao']])
+def prever_demanda(modelo, ultimo_dia, dias=7):
+    """
+    Gera as previsões de demanda para os próximos `dias`.
+    """
+    dias_futuros = [[ultimo_dia + i + 1] for i in range(dias)]
+    previsoes = modelo.predict(dias_futuros)
+
+    resultado = pd.DataFrame({
+        "dias": [ultimo_dia + i + 1 for i in range(dias)],
+        "previsao": previsoes.astype(int)
+    })
+    return resultado
