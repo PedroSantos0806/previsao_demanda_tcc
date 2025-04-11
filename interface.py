@@ -1,10 +1,10 @@
 import streamlit as st
+import pandas as pd
 from datetime import date
 from database import session, Venda, Usuario
 from model import carregar_dados, treinar_modelo, prever_demanda
 from sqlalchemy.exc import IntegrityError
 import hashlib
-import pandas as pd
 
 st.set_page_config(page_title="Previsão de Demanda", layout="centered")
 
