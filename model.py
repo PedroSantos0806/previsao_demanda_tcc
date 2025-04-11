@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from sqlalchemy import create_engine
 from sklearn.linear_model import LinearRegression
 
@@ -35,6 +36,7 @@ def treinar_modelo(df):
 def prever_demanda(modelo, ultimo_dia, dias_previsao=7):
     novos_dias = pd.DataFrame({'dias': list(range(ultimo_dia+1, ultimo_dia+1+dias_previsao))})
     previsao = modelo.predict(novos_dias)
+    previsao = np.clip(previsao, 0, None)  
     novos_dias['previsao'] = previsao
     return novos_dias
 
