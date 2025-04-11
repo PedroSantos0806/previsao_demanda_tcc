@@ -100,23 +100,25 @@ else:
 
     if st.button("Prever Demanda"):
         df = carregar_dados(usuario_id=st.session_state.usuario_id)
-        if df.empty:
-            st.warning("Nenhum dado encontrado para previsão.")
-        else:
-            modelo, ultimo_dia = treinar_modelo(df)
-            previsoes = prever_demanda(modelo, ultimo_dia, dias)
-            st.subheader("Previsões de Demanda")
-            st.dataframe(previsoes)
-    df['data'] = pd.to_datetime(df['data'])
-    media_diaria = df.groupby(df['data'].dt.date)['quantidade'].sum().mean()
-    max_vendas = df['quantidade'].max()
-    min_vendas = df['quantidade'].min()
+    if df.empty:
+        st.warning("Nenhum dado encontrado para previsão.")
+    else:
+        df['data'] = pd.to_datetime(df['data'])  # <-- Coloque aqui dentro
+        modelo, ultimo_dia = treinar_modelo(df)
+        previsoes = prever_demanda(modelo, ultimo_dia, dias)
 
-    st.markdown("### 📊 Estatísticas de Vendas")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("📅 Média Diária", f"{media_diaria:.2f}")
-    col2.metric("🔼 Máximo Vendido", f"{max_vendas}")
-    col3.metric("🔽 Mínimo Vendido", f"{min_vendas}")
+        media_diaria = df.groupby(df['data'].dt.date)['quantidade'].sum().mean()
+        max_vendas = df['quantidade'].max()
+        min_vendas = df['quantidade'].min()
+
+        st.subheader("Previsões de Demanda")
+        st.dataframe(previsoes)
+
+        st.markdown("### 📊 Estatísticas de Vendas")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("📅 Média Diária", f"{media_diaria:.2f}")
+        col2.metric("🔼 Máximo Vendido", f"{max_vendas}")
+        col3.metric("🔽 Mínimo Vendido", f"{min_vendas}")
 
     # Histórico de vendas
     st.markdown("## 🧾 Histórico de Vendas")
