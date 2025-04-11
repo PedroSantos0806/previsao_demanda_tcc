@@ -98,27 +98,28 @@ else:
     st.markdown("Use o modelo de regressão linear para prever as vendas dos próximos dias.")
     dias = st.slider("Número de dias para previsão", min_value=1, max_value=30, value=7)
 
-if st.button("Prever Demanda"):
-    df = carregar_dados(usuario_id=st.session_state.usuario_id)
-    if df.empty:
-        st.warning("Nenhum dado encontrado para previsão.")
-    else:
-        df['data'] = pd.to_datetime(df['data'])  # <-- Coloque aqui dentro
-        modelo, ultimo_dia = treinar_modelo(df)
-        previsoes = prever_demanda(modelo, ultimo_dia, dias)
+    if st.button("Prever Demanda"):
+        df = carregar_dados(usuario_id=st.session_state.usuario_id)
+        if df.empty:
+            st.warning("Nenhum dado encontrado para previsão.")
+        else:
+            df['data'] = pd.to_datetime(df['data'])  # Conversão segura
+            modelo, ultimo_dia = treinar_modelo(df)
+            previsoes = prever_demanda(modelo, ultimo_dia, dias)
 
-        media_diaria = df.groupby(df['data'].dt.date)['quantidade'].sum().mean()
-        max_vendas = df['quantidade'].max()
-        min_vendas = df['quantidade'].min()
+            # Estatísticas
+            media_diaria = df.groupby(df['data'].dt.date)['quantidade'].sum().mean()
+            max_vendas = df['quantidade'].max()
+            min_vendas = df['quantidade'].min()
 
-        st.subheader("Previsões de Demanda")
-        st.dataframe(previsoes)
+            st.subheader("📅 Previsões de Demanda")
+            st.dataframe(previsoes)
 
-        st.markdown("### 📊 Estatísticas de Vendas")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("📅 Média Diária", f"{media_diaria:.2f}")
-        col2.metric("🔼 Máximo Vendido", f"{max_vendas}")
-        col3.metric("🔽 Mínimo Vendido", f"{min_vendas}")
+            st.markdown("### 📊 Estatísticas de Vendas")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("📅 Média Diária", f"{media_diaria:.2f}")
+            col2.metric("🔼 Máximo Vendido", f"{max_vendas}")
+            col3.metric("🔽 Mínimo Vendido", f"{min_vendas}")
 
     # Histórico de vendas
     st.markdown("## 🧾 Histórico de Vendas")
