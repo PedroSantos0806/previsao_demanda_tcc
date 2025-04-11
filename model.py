@@ -2,7 +2,6 @@ import pandas as pd
 from sqlalchemy import create_engine
 from sklearn.linear_model import LinearRegression
 
-
 usuario = 'root'
 senha = 'cVUGBLbWwCeJcvbXtsKEUodzlThjcauU'
 host = 'switchyard.proxy.rlwy.net'
@@ -10,9 +9,13 @@ porta = '39084'
 banco = 'railway'
 database_url = f'mysql+mysqlconnector://{usuario}:{senha}@{host}:{porta}/{banco}'
 
-def carregar_dados():
+def carregar_dados(usuario_id=None):
     engine = create_engine(database_url)
-    df = pd.read_sql('SELECT * FROM vendas', con=engine)
+    if usuario_id is not None:
+        query = f'SELECT * FROM vendas WHERE usuario_id = {usuario_id}'
+    else:
+        query = 'SELECT * FROM vendas'
+    df = pd.read_sql(query, con=engine)
     return df
 
 def preparar_dados(df):
