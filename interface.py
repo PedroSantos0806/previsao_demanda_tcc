@@ -4,6 +4,7 @@ from database import session, Venda, Usuario
 from model import carregar_dados, treinar_modelo, prever_demanda
 from sqlalchemy.exc import IntegrityError
 import hashlib
+import pandas as pd
 
 st.set_page_config(page_title="Previsão de Demanda", layout="centered")
 
@@ -106,6 +107,16 @@ else:
             previsoes = prever_demanda(modelo, ultimo_dia, dias)
             st.subheader("Previsões de Demanda")
             st.dataframe(previsoes)
+    df['data'] = pd.to_datetime(df['data'])
+    media_diaria = df.groupby(df['data'].dt.date)['quantidade'].sum().mean()
+    max_vendas = df['quantidade'].max()
+    min_vendas = df['quantidade'].min()
+
+    st.markdown("### 📊 Estatísticas de Vendas")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("📅 Média Diária", f"{media_diaria:.2f}")
+    col2.metric("🔼 Máximo Vendido", f"{max_vendas}")
+    col3.metric("🔽 Mínimo Vendido", f"{min_vendas}")
 
     # Histórico de vendas
     st.markdown("## 🧾 Histórico de Vendas")
