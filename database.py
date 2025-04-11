@@ -1,8 +1,10 @@
 
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, ForeignKey
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+from sqlalchemy.orm import relationship, backref
+
 
 
 MYSQL_USER = 'root'
@@ -24,6 +26,14 @@ Base = declarative_base()
 Session = sessionmaker(bind=engine)
 session = Session()
 
+class Usuario(Base):
+    __tablename__ = 'usuarios'
+    id = Column(Integer, primary_key=True)
+    nome = Column(String(100), nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
+    senha = Column(String(100), nullable=False)
+
+    vendas = relationship('Venda', backref='usuario')
 
 # Modelo da Tabela de Vendas
 class Venda(Base):
@@ -32,8 +42,9 @@ class Venda(Base):
     id = Column(Integer, primary_key=True)
     data = Column(Date, nullable=False)
     quantidade = Column(Integer, nullable=False)
-    produto = Column(String(100), nullable=True)
-    valor = Column(Float, nullable=True)
+    produto = Column(String(100), nullable=False)
+    valor = Column(Float, nullable=False)
+    usuario_id = Column(Integer, ForeignKey('usuarios.id'), nullable=False)
 
 if __name__ == "__main__":
     Base.metadata.create_all(engine)

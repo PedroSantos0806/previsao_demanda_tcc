@@ -26,7 +26,7 @@ def treinar_modelo(df):
     x = df[['dias']]
     y = df['quantidade']
     modelo = LinearRegression()
-    modelo.fit
+    modelo.fit(x, y)
     return modelo, df['dias'].max()
 
 def prever_demanda(modelo, ultimo_dia, dias_previsao=7):
