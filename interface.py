@@ -92,11 +92,6 @@ else:
                 session.commit()
                 st.success("✅ Venda cadastrada com sucesso!")
 
-    # Previsão de demanda
-    st.markdown("## 📈 Previsão de Demanda com IA")
-    st.markdown("Use o modelo de regressão linear para prever as vendas dos próximos dias.")
-    dias = st.slider("Número de dias para previsão", min_value=1, max_value=30, value=7)
-
     df = carregar_dados(usuario_id=st.session_state.usuario_id)
 
     if st.button("Prever Demanda"):
