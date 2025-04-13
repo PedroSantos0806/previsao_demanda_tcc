@@ -1,5 +1,3 @@
 pandas
-scikit-learn
-flask
 sqlalchemy
 mysql-connector-python
