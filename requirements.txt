@@ -1,3 +1,6 @@
+streamlit
 pandas
 sqlalchemy
 mysql-connector-python
+plotly
+scikit-learn
