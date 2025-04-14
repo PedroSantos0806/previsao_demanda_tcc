@@ -96,16 +96,18 @@ else:
     if st.button("Prever Demanda"):
         if produto_escolhido == "Todos os Produtos":
             previsoes_multi = treinar_multiplos_modelos(df, dias)
-            st.dataframe(previsoes_multi, use_container_width=True)
+            if previsoes_multi.empty:
+                st.warning("Nenhum dado suficiente para gerar previsões.")
+            else:
+                st.dataframe(previsoes_multi, use_container_width=True)
 
-            fig = px.line(previsoes_multi, x='Data Prevista', y='Demanda Prevista', color='Produto', markers=True,
-                          title="📊 Previsão de Demanda para Todos os Produtos")
-            st.plotly_chart(fig, use_container_width=True)
+                fig = px.line(previsoes_multi, x='Data Prevista', y='Demanda Prevista', color='Produto', markers=True,
+                              title="📊 Previsão de Demanda para Todos os Produtos")
+                st.plotly_chart(fig, use_container_width=True)
 
-            # Exportar para Excel
-            buffer = BytesIO()
-            previsoes_multi.to_excel(buffer, index=False)
-            st.download_button("📥 Baixar Análise em Excel", buffer.getvalue(), file_name="previsao_todos.xlsx")
+                buffer = BytesIO()
+                previsoes_multi.to_excel(buffer, index=False)
+                st.download_button("📥 Baixar Análise em Excel", buffer.getvalue(), file_name="previsao_todos.xlsx")
         else:
             modelo, ultimo_dia = treinar_modelo(df, produto_escolhido)
             previsoes = prever_demanda(modelo, df, ultimo_dia, dias)
