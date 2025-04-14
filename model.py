@@ -1,6 +1,6 @@
 import pandas as pd
-from sklearn.linear_model import LinearRegression
 import numpy as np
+from sklearn.linear_model import LinearRegression
 from database import session, Venda
 from datetime import timedelta
 
@@ -14,29 +14,49 @@ def carregar_dados(usuario_id):
     } for venda in vendas]
     return pd.DataFrame(dados)
 
-def treinar_modelo(df, produto=None):
+def preprocessar_dados(df, produto=None):
     df['data'] = pd.to_datetime(df['data'], errors='coerce')
     df = df.dropna(subset=['data', 'quantidade'])
+    
     if produto:
         df = df[df['produto'] == produto]
 
     df = df.groupby('data').agg({'quantidade': 'sum'}).reset_index()
     df = df.sort_values('data')
+
+    # Remover outliers extremos com base no desvio padrão
+    desvio = df['quantidade'].std()
+    media = df['quantidade'].mean()
+    df = df[(df['quantidade'] >= media - 2 * desvio) & (df['quantidade'] <= media + 2 * desvio)]
+
+    # Suavização com média móvel (opcional)
+    df['quantidade'] = df['quantidade'].rolling(window=3, min_periods=1).mean()
+
     df['dias'] = (df['data'] - df['data'].min()).dt.days
+    return df
+
+def treinar_modelo(df, produto=None):
+    df = preprocessar_dados(df, produto)
+    if len(df) < 2:
+        raise ValueError("Dados insuficientes para treinar o modelo.")
 
     X = df[['dias']]
     y = df['quantidade']
 
     modelo = LinearRegression()
     modelo.fit(X, y)
+    r2 = modelo.score(X, y)
     ultimo_dia = df['data'].max()
-    return modelo, ultimo_dia
+
+    return modelo, ultimo_dia, r2
 
 def prever_demanda(modelo, df, ultimo_dia, dias=7):
+    df = preprocessar_dados(df)
     futuras_datas = [ultimo_dia + timedelta(days=i+1) for i in range(dias)]
     dias_futuros = np.array([(d - df['data'].min()).days for d in futuras_datas]).reshape(-1, 1)
     previsoes = modelo.predict(dias_futuros)
-    previsoes = [max(0, int(round(p))) for p in previsoes]
+    previsoes = [max(0, round(p, 2)) for p in previsoes]
+
     return pd.DataFrame({"Data Prevista": futuras_datas, "Demanda Prevista": previsoes})
 
 def treinar_multiplos_modelos(df, dias_futuros):
@@ -44,27 +64,35 @@ def treinar_multiplos_modelos(df, dias_futuros):
     df['data'] = pd.to_datetime(df['data'])
 
     for produto in df['produto'].unique():
-        dados_produto = df[df['produto'] == produto].copy()
-        dados_produto = dados_produto.groupby(dados_produto['data'].dt.date)['quantidade'].sum().reset_index()
-        dados_produto.columns = ['data', 'quantidade']
-        dados_produto['dias'] = (pd.to_datetime(dados_produto['data']) - pd.to_datetime(dados_produto['data']).min()).dt.days
+        df_prod = df[df['produto'] == produto].copy()
+        if df_prod.empty:
+            continue
 
-        if len(dados_produto) < 2:
-            continue  # pula se não houver dados suficientes para o modelo
+        df_prod = preprocessar_dados(df_prod)
+
+        if len(df_prod) < 2:
+            continue
+
+        X = df_prod[['dias']]
+        y = df_prod['quantidade']
 
         modelo = LinearRegression()
-        modelo.fit(dados_produto[['dias']], dados_produto['quantidade'])
+        modelo.fit(X, y)
+        r2 = modelo.score(X, y)
+        primeiro_dia = df_prod['data'].min()
+        ultimo_dia = df_prod['dias'].max()
 
-        ultimo_dia = dados_produto['dias'].max()
         for i in range(1, dias_futuros + 1):
             dia_futuro = ultimo_dia + i
-            data_prevista = pd.to_datetime(dados_produto['data'].min()) + pd.Timedelta(days=dia_futuro)
-            demanda_prevista = max(0, int(modelo.predict([[dia_futuro]])[0]))
+            data_prevista = primeiro_dia + timedelta(days=dia_futuro)
+            pred = modelo.predict([[dia_futuro]])[0]
+            demanda_prevista = max(0, round(pred, 2))
 
             resultados.append({
                 "Produto": produto,
                 "Data Prevista": data_prevista.date(),
-                "Demanda Prevista": demanda_prevista
+                "Demanda Prevista": demanda_prevista,
+                "Score R2": round(r2, 3)
             })
 
     if not resultados:
