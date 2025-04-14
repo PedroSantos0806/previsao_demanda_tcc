@@ -1,11 +1,14 @@
+# interface.py
+
 import streamlit as st
 import pandas as pd
 from datetime import date, datetime
 from database import session, Venda, Usuario
-from model import carregar_dados, treinar_modelo, prever_demanda
+from model import carregar_dados, treinar_modelo, prever_demanda, treinar_multiplos_modelos
 from sqlalchemy.exc import IntegrityError
 import hashlib
 import plotly.express as px
+from io import BytesIO
 
 st.set_page_config(page_title="Previsão de Demanda", layout="centered")
 
@@ -14,8 +17,7 @@ def hash_senha(senha):
 
 def autenticar(email, senha):
     senha_hash = hash_senha(senha)
-    usuario = session.query(Usuario).filter_by(email=email, senha=senha_hash).first()
-    return usuario
+    return session.query(Usuario).filter_by(email=email, senha=senha_hash).first()
 
 def cadastrar_usuario(nome, email, senha):
     senha_hash = hash_senha(senha)
@@ -51,10 +53,7 @@ if "usuario_id" not in st.session_state:
         senha = st.text_input("Senha", type="password")
         if st.button("Cadastrar"):
             sucesso, mensagem = cadastrar_usuario(nome, email, senha)
-            if sucesso:
-                st.success(mensagem)
-            else:
-                st.error(mensagem)
+            st.success(mensagem) if sucesso else st.error(mensagem)
 
 else:
     st.sidebar.success(f"Logado como: {st.session_state.nome_usuario}")
@@ -78,68 +77,80 @@ else:
             if not produto.strip():
                 st.error("O nome do produto é obrigatório.")
             else:
-                nova_venda = Venda(
-                    data=data,
-                    quantidade=quantidade,
-                    produto=produto,
-                    valor=valor,
-                    usuario_id=st.session_state.usuario_id
-                )
+                nova_venda = Venda(data=data, quantidade=quantidade, produto=produto, valor=valor, usuario_id=st.session_state.usuario_id)
                 session.add(nova_venda)
                 session.commit()
                 st.success("✅ Venda cadastrada com sucesso!")
 
     df = carregar_dados(usuario_id=st.session_state.usuario_id)
 
-    # Filtro por produto
-    if not df.empty:
-        produtos = df['produto'].unique()
-        produto_escolhido = st.selectbox("🔍 Selecione o produto para previsão", produtos)
-    else:
+    if df.empty:
         st.info("Cadastre vendas para continuar.")
         st.stop()
 
-    # Previsão de demanda
+    produtos = df['produto'].unique().tolist()
+    produtos.insert(0, "Todos os Produtos")
+    produto_escolhido = st.selectbox("🔍 Produto para previsão", produtos)
+
     st.markdown("## 🔮 Prever Demanda Futura")
     dias = st.slider("Número de dias para previsão", 1, 30, 7)
 
     if st.button("Prever Demanda"):
-        modelo, ultimo_dia = treinar_modelo(df, produto_escolhido)
-        previsoes = prever_demanda(modelo, df, ultimo_dia, dias)
-        st.dataframe(previsoes, use_container_width=True)
+        if produto_escolhido == "Todos os Produtos":
+            previsoes_multi = treinar_multiplos_modelos(df, dias)
+            st.dataframe(previsoes_multi, use_container_width=True)
 
-        fig = px.line(previsoes, x='Data Prevista', y='Demanda Prevista',
-                      title="📊 Gráfico de Previsão de Demanda",
-                      markers=True)
-        st.plotly_chart(fig, use_container_width=True)
+            fig = px.line(previsoes_multi, x='Data Prevista', y='Demanda Prevista', color='Produto', markers=True,
+                          title="📊 Previsão de Demanda para Todos os Produtos")
+            st.plotly_chart(fig, use_container_width=True)
 
-    # Estatísticas
-    st.markdown("## 📊 Estatísticas de Vendas")
+            # Exportar para Excel
+            buffer = BytesIO()
+            previsoes_multi.to_excel(buffer, index=False)
+            st.download_button("📥 Baixar Análise em Excel", buffer.getvalue(), file_name="previsao_todos.xlsx")
+        else:
+            modelo, ultimo_dia = treinar_modelo(df, produto_escolhido)
+            previsoes = prever_demanda(modelo, df, ultimo_dia, dias)
+            st.dataframe(previsoes, use_container_width=True)
+
+            fig = px.line(previsoes, x='Data Prevista', y='Demanda Prevista',
+                          title=f"📊 Previsão de Demanda: {produto_escolhido}",
+                          markers=True)
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Exportar Excel
+            buffer = BytesIO()
+            previsoes.to_excel(buffer, index=False)
+            st.download_button("📥 Baixar Análise em Excel", buffer.getvalue(), file_name="previsao_produto.xlsx")
+
+    # Estatísticas e histórico
     df['data'] = pd.to_datetime(df['data'])
-    filtro_produto = df[df['produto'] == produto_escolhido]
-    media_diaria = filtro_produto.groupby(df['data'].dt.date)['quantidade'].sum().mean()
+    filtro = df if produto_escolhido == "Todos os Produtos" else df[df['produto'] == produto_escolhido]
+    media_diaria = filtro.groupby(df['data'].dt.date)['quantidade'].sum().mean()
     col1, col2, col3 = st.columns(3)
     col1.metric("📅 Média Diária", f"{media_diaria:.2f}")
-    col2.metric("🔼 Máximo Vendido", filtro_produto['quantidade'].max())
-    col3.metric("🔽 Mínimo Vendido", filtro_produto['quantidade'].min())
+    col2.metric("🔼 Máximo Vendido", filtro['quantidade'].max())
+    col3.metric("🔽 Mínimo Vendido", filtro['quantidade'].min())
 
     st.markdown("## 📜 Histórico de Vendas")
-    st.dataframe(filtro_produto.sort_values(by="data"), use_container_width=True)
+    st.dataframe(filtro.sort_values(by="data"), use_container_width=True)
 
     st.markdown("## 🔁 Verificar Previsão em Data Passada")
     data_analise = st.date_input("Selecione a data para verificar previsão")
 
     if st.button("Verificar Previsão da Época"):
-        modelo, _ = treinar_modelo(df, produto_escolhido)
-        df['data'] = pd.to_datetime(df['data'])  # Garante tipo datetime
-        data_inicial = pd.to_datetime(df['data'].min()).date()  # Garante tipo date
-        dias_passados = (data_analise - data_inicial).days
+        if produto_escolhido == "Todos os Produtos":
+            st.warning("Selecione um produto específico para essa comparação.")
+        else:
+            modelo, _ = treinar_modelo(df.copy(), produto_escolhido)
+            df['data'] = pd.to_datetime(df['data'])
+            data_inicial = pd.to_datetime(df['data'].min()).date()
+            dias_passados = (data_analise - data_inicial).days
+            data_analise = pd.to_datetime(data_analise).date()
 
-        previsao = modelo.predict([[dias_passados]])[0]
-        previsao = max(0, int(previsao))
+            previsao = max(0, int(modelo.predict([[dias_passados]])[0]))
+            vendas_reais = df[(df['produto'] == produto_escolhido) & (df['data'].dt.date == data_analise)]
+            vendas_total = vendas_reais['quantidade'].sum()
 
-        vendas_reais = filtro_produto[filtro_produto['data'].dt.date == data_analise]
-        vendas_total = vendas_reais['quantidade'].sum()
-
-        st.info(f"📆 Previsão para {data_analise.strftime('%d/%m/%Y')}: **{previsao} unidades**")
-        st.success(f"📦 Vendas reais nesse dia: **{vendas_total} unidades**")
+            st.info(f"📆 Previsão para {data_analise.strftime('%d/%m/%Y')}: **{previsao} unidades**")
+            st.success(f"📦 Vendas reais: **{vendas_total} unidades**")

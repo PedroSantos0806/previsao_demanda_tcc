@@ -15,7 +15,8 @@ def carregar_dados(usuario_id):
     return pd.DataFrame(dados)
 
 def treinar_modelo(df, produto=None):
-    df['data'] = pd.to_datetime(df['data'])
+    df['data'] = pd.to_datetime(df['data'], errors='coerce')
+    df = df.dropna(subset=['data', 'quantidade'])
     if produto:
         df = df[df['produto'] == produto]
 
@@ -35,9 +36,18 @@ def prever_demanda(modelo, df, ultimo_dia, dias=7):
     futuras_datas = [ultimo_dia + timedelta(days=i+1) for i in range(dias)]
     dias_futuros = np.array([(d - df['data'].min()).days for d in futuras_datas]).reshape(-1, 1)
     previsoes = modelo.predict(dias_futuros)
-    previsoes = [max(0, int(p)) for p in previsoes]
+    previsoes = [max(0, int(round(p))) for p in previsoes]
+    return pd.DataFrame({"Data Prevista": futuras_datas, "Demanda Prevista": previsoes})
 
-    return pd.DataFrame({
-        "Data Prevista": futuras_datas,
-        "Demanda Prevista": previsoes
-    })
+def treinar_multiplos_modelos(df, dias=7):
+    resultados = []
+    produtos = df['produto'].unique()
+    for produto in produtos:
+        try:
+            modelo, ultimo_dia = treinar_modelo(df.copy(), produto)
+            previsoes = prever_demanda(modelo, df[df['produto'] == produto], ultimo_dia, dias)
+            previsoes['Produto'] = produto
+            resultados.append(previsoes)
+        except:
+            continue
+    return pd.concat(resultados, ignore_index=True)
