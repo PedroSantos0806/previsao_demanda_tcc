@@ -39,15 +39,35 @@ def prever_demanda(modelo, df, ultimo_dia, dias=7):
     previsoes = [max(0, int(round(p))) for p in previsoes]
     return pd.DataFrame({"Data Prevista": futuras_datas, "Demanda Prevista": previsoes})
 
-def treinar_multiplos_modelos(df, dias=7):
+def treinar_multiplos_modelos(df, dias_futuros):
     resultados = []
-    produtos = df['produto'].unique()
-    for produto in produtos:
-        try:
-            modelo, ultimo_dia = treinar_modelo(df.copy(), produto)
-            previsoes = prever_demanda(modelo, df[df['produto'] == produto], ultimo_dia, dias)
-            previsoes['Produto'] = produto
-            resultados.append(previsoes)
-        except:
-            continue
-    return pd.concat(resultados, ignore_index=True)
+    df['data'] = pd.to_datetime(df['data'])
+
+    for produto in df['produto'].unique():
+        dados_produto = df[df['produto'] == produto].copy()
+        dados_produto = dados_produto.groupby(dados_produto['data'].dt.date)['quantidade'].sum().reset_index()
+        dados_produto.columns = ['data', 'quantidade']
+        dados_produto['dias'] = (pd.to_datetime(dados_produto['data']) - pd.to_datetime(dados_produto['data']).min()).dt.days
+
+        if len(dados_produto) < 2:
+            continue  # pula se não houver dados suficientes para o modelo
+
+        modelo = LinearRegression()
+        modelo.fit(dados_produto[['dias']], dados_produto['quantidade'])
+
+        ultimo_dia = dados_produto['dias'].max()
+        for i in range(1, dias_futuros + 1):
+            dia_futuro = ultimo_dia + i
+            data_prevista = pd.to_datetime(dados_produto['data'].min()) + pd.Timedelta(days=dia_futuro)
+            demanda_prevista = max(0, int(modelo.predict([[dia_futuro]])[0]))
+
+            resultados.append({
+                "Produto": produto,
+                "Data Prevista": data_prevista.date(),
+                "Demanda Prevista": demanda_prevista
+            })
+
+    if not resultados:
+        raise ValueError("Nenhum produto possui dados suficientes para previsão.")
+
+    return pd.DataFrame(resultados)
