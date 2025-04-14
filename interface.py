@@ -9,7 +9,6 @@ import plotly.express as px
 
 st.set_page_config(page_title="Previsão de Demanda", layout="centered")
 
-# Funções auxiliares
 def hash_senha(senha):
     return hashlib.sha256(senha.encode()).hexdigest()
 
@@ -57,7 +56,6 @@ if "usuario_id" not in st.session_state:
             else:
                 st.error(mensagem)
 
-# Sistema logado
 else:
     st.sidebar.success(f"Logado como: {st.session_state.nome_usuario}")
     if st.sidebar.button("Sair"):
@@ -67,7 +65,6 @@ else:
 
     st.title("📈 Previsão de Demanda com Machine Learning")
 
-    # Cadastro de vendas
     st.markdown("## 🛒 Cadastrar Nova Venda")
     with st.form(key="form_venda"):
         col1, col2 = st.columns(2)
@@ -126,11 +123,9 @@ else:
     col2.metric("🔼 Máximo Vendido", filtro_produto['quantidade'].max())
     col3.metric("🔽 Mínimo Vendido", filtro_produto['quantidade'].min())
 
-    # Histórico
     st.markdown("## 📜 Histórico de Vendas")
     st.dataframe(filtro_produto.sort_values(by="data"), use_container_width=True)
 
-    # Comparar previsão com vendas passadas
     st.markdown("## 🔁 Verificar Previsão em Data Passada")
     data_analise = st.date_input("Selecione a data para verificar previsão")
 
