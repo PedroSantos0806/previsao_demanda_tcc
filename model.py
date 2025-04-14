@@ -79,7 +79,7 @@ def treinar_multiplos_modelos(df, dias_futuros):
         modelo = LinearRegression()
         modelo.fit(X, y)
         r2 = modelo.score(X, y)
-        primeiro_dia = df_prod['data'].min()
+        primeiro_dia = pd.to_datetime(df_prod['data'].min())
         ultimo_dia = df_prod['dias'].max()
 
         for i in range(1, dias_futuros + 1):
