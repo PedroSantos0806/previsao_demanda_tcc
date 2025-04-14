@@ -116,12 +116,10 @@ else:
                           markers=True)
             st.plotly_chart(fig, use_container_width=True)
 
-            # Exportar Excel
             buffer = BytesIO()
             previsoes.to_excel(buffer, index=False)
             st.download_button("📥 Baixar Análise em Excel", buffer.getvalue(), file_name="previsao_produto.xlsx")
 
-    # Estatísticas e histórico
     df['data'] = pd.to_datetime(df['data'])
     filtro = df if produto_escolhido == "Todos os Produtos" else df[df['produto'] == produto_escolhido]
     media_diaria = filtro.groupby(df['data'].dt.date)['quantidade'].sum().mean()
