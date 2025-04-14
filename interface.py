@@ -108,7 +108,7 @@ else:
 
     if st.button("Prever Demanda"):
         modelo, ultimo_dia = treinar_modelo(df, produto_escolhido)
-        previsoes = prever_demanda(modelo, ultimo_dia, dias)
+        previsoes = prever_demanda(modelo, df, ultimo_dia, dias)
         st.dataframe(previsoes, use_container_width=True)
 
         fig = px.line(previsoes, x='Data Prevista', y='Demanda Prevista',
@@ -134,14 +134,17 @@ else:
     st.markdown("## 🔁 Verificar Previsão em Data Passada")
     data_analise = st.date_input("Selecione a data para verificar previsão")
 
-    if st.button("Verificar Previsão da Época"):
-        modelo, _ = treinar_modelo(df, produto_escolhido)
-        dias_passados = (data_analise - df['data'].min()).days
-        previsao = modelo.predict([[dias_passados]])[0]
-        previsao = max(0, int(previsao))
+if st.button("Verificar Previsão da Época"):
+    modelo, _ = treinar_modelo(df, produto_escolhido)
+    df['data'] = pd.to_datetime(df['data'])  # Garante tipo datetime
+    data_inicial = pd.to_datetime(df['data'].min()).date()  # Garante tipo date
+    dias_passados = (data_analise - data_inicial).days
 
-        vendas_reais = filtro_produto[filtro_produto['data'].dt.date == data_analise]
-        vendas_total = vendas_reais['quantidade'].sum()
+    previsao = modelo.predict([[dias_passados]])[0]
+    previsao = max(0, int(previsao))
 
-        st.info(f"📆 Previsão para {data_analise}: **{previsao} unidades**")
-        st.success(f"📦 Vendas reais nesse dia: **{vendas_total} unidades**")
+    vendas_reais = filtro_produto[filtro_produto['data'].dt.date == data_analise]
+    vendas_total = vendas_reais['quantidade'].sum()
+
+    st.info(f"📆 Previsão para {data_analise.strftime('%d/%m/%Y')}: **{previsao} unidades**")
+    st.success(f"📦 Vendas reais nesse dia: **{vendas_total} unidades**")

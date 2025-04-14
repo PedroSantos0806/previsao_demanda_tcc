@@ -31,10 +31,10 @@ def treinar_modelo(df, produto=None):
     ultimo_dia = df['data'].max()
     return modelo, ultimo_dia
 
-def prever_demanda(modelo, ultimo_dia, df, dias=7):
+def prever_demanda(modelo, df, ultimo_dia, dias=7):
     futuras_datas = [ultimo_dia + timedelta(days=i+1) for i in range(dias)]
-    dias_futuros = np.array([(d - ultimo_dia).days for d in futuras_datas]).reshape(-1, 1)
-    previsoes = modelo.predict(np.array([(d - df['data'].min()).days for d in futuras_datas]).reshape(-1, 1))
+    dias_futuros = np.array([(d - df['data'].min()).days for d in futuras_datas]).reshape(-1, 1)
+    previsoes = modelo.predict(dias_futuros)
     previsoes = [max(0, int(p)) for p in previsoes]
 
     return pd.DataFrame({
