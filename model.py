@@ -84,7 +84,7 @@ def treinar_multiplos_modelos(df, dias_futuros):
 
         for i in range(1, dias_futuros + 1):
             dia_futuro = ultimo_dia + i
-            data_prevista = primeiro_dia + timedelta(days=dia_futuro)
+            data_prevista = primeiro_dia + timedelta(days=int(dia_futuro))
             pred = modelo.predict([[dia_futuro]])[0]
             demanda_prevista = max(0, round(pred, 2))
 
