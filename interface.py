@@ -104,12 +104,13 @@ else:
                 fig = px.line(previsoes_multi, x='Data Prevista', y='Demanda Prevista', color='Produto', markers=True,
                               title="📊 Previsão de Demanda para Todos os Produtos")
                 st.plotly_chart(fig, use_container_width=True)
+                st.caption(f"📈 Qualidade da previsão (R²): {r2:.3f}")
 
                 buffer = BytesIO()
                 previsoes_multi.to_excel(buffer, index=False)
                 st.download_button("📥 Baixar Análise em Excel", buffer.getvalue(), file_name="previsao_todos.xlsx")
         else:
-            modelo, ultimo_dia = treinar_modelo(df, produto_escolhido)
+            modelo, ultimo_dia, r2 = treinar_modelo(df, produto_escolhido)
             previsoes = prever_demanda(modelo, df, ultimo_dia, dias)
             st.dataframe(previsoes, use_container_width=True)
 
@@ -140,7 +141,7 @@ else:
         if produto_escolhido == "Todos os Produtos":
             st.warning("Selecione um produto específico para essa comparação.")
         else:
-            modelo, _ = treinar_modelo(df.copy(), produto_escolhido)
+            modelo, _, _ = treinar_modelo(df.copy(), produto_escolhido)
             df['data'] = pd.to_datetime(df['data'])
             data_inicial = pd.to_datetime(df['data'].min()).date()
             dias_passados = (data_analise - data_inicial).days
