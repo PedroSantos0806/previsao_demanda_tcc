@@ -14,8 +14,13 @@ def carregar_dados(usuario_id):
     } for venda in vendas]
     return pd.DataFrame(dados)
 
-def preprocessar_dados(df):
+def preprocessar_dados(df, produto=None):
     df = df.copy()
+    df['data'] = pd.to_datetime(df['data'])
+    if produto:
+        df = df[df['produto'] == produto]
+    
+    df = df.groupby('data').agg({'quantidade': 'sum'}).reset_index()
     df = df.sort_values(by="data")
     df["dias"] = (df["data"] - df["data"].min()).dt.days
     return df
