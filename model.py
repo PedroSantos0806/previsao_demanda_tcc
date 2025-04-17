@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from database import session, Venda
 from datetime import timedelta
+from sklearn.ensemble import RandomForestRegressor
 
 def carregar_dados(usuario_id):
     vendas = session.query(Venda).filter_by(usuario_id=usuario_id).all()
@@ -26,16 +27,16 @@ def preprocessar_dados(df, produto=None):
     return df
 
 def treinar_modelo(df, produto=None):
-    df = preprocessar_dados(df, produto)
+    df - preprocessar_dados(df, produto)
     if len(df) < 2:
         raise ValueError("Dados insuficientes para treinar o modelo.")
-
-    X = df[['dias']]
+    
+    x = df[['dias']]
     y = df['quantidade']
 
-    modelo = LinearRegression()
-    modelo.fit(X, y)
-    r2 = modelo.score(X, y)
+    modelo = RandomForestRegressor(n_estimators=100, random_state=42)
+    modelo.fit(x, y)
+    r2 = modelo.score(x, y)
     ultimo_dia = df['data'].max()
 
     return modelo, ultimo_dia, r2
@@ -67,7 +68,7 @@ def treinar_multiplos_modelos(df, dias_futuros):
         X = df_prod[['dias']]
         y = df_prod['quantidade']
 
-        modelo = LinearRegression()
+        modelo = RandomForestRegressor(n_estimators=100, random_state=42)
         modelo.fit(X, y)
         r2 = modelo.score(X, y)
 
