@@ -40,8 +40,8 @@ def treinar_modelo(df, produto=None):
 
     return modelo, ultimo_dia, r2
 
-def prever_demanda(modelo, df, ultimo_dia, dias=7):
-    df = preprocessar_dados(df)
+def prever_demanda(modelo, df, produto, ultimo_dia, dias=7):
+    df = preprocessar_dados(df, produto)
     futuras_datas = [ultimo_dia + timedelta(days=i+1) for i in range(dias)]
     dias_futuros = np.array([(d - df['data'].min()).days for d in futuras_datas]).reshape(-1, 1)
     previsoes = modelo.predict(dias_futuros)

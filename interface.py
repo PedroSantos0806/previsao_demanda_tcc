@@ -104,14 +104,18 @@ else:
                 fig = px.line(previsoes_multi, x='Data Prevista', y='Demanda Prevista', color='Produto', markers=True,
                               title="📊 Previsão de Demanda para Todos os Produtos")
                 st.plotly_chart(fig, use_container_width=True)
-                st.caption(f"📈 Qualidade da previsão (R²): {r2:.3f}")
+                st.caption("📌 Cada linha do gráfico representa um produto diferente.")
+                st.caption("📅 Coluna 'Data Prevista' indica a data futura analisada.")
+                st.caption("📦 Coluna 'Demanda Prevista' mostra quantas unidades o modelo estima que serão vendidas.")
+
 
                 buffer = BytesIO()
                 previsoes_multi.to_excel(buffer, index=False)
                 st.download_button("📥 Baixar Análise em Excel", buffer.getvalue(), file_name="previsao_todos.xlsx")
         else:
             modelo, ultimo_dia, r2 = treinar_modelo(df, produto_escolhido)
-            previsoes = prever_demanda(modelo, df, ultimo_dia, dias)
+            st.caption(f"Modelo treinado com R²: {r2:.2f}")
+            previsoes = prever_demanda(modelo, df, produto_escolhido, ultimo_dia, dias)
             st.dataframe(previsoes, use_container_width=True)
 
             fig = px.line(previsoes, x='Data Prevista', y='Demanda Prevista',
